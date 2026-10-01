@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AirSense – Premium Air Quality Dashboard</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas id="particleFlowField" class="particle-flow-field"></canvas>
+    <div class="dashboard-container">
+      <aside class="sidebar-left">
+        <div class="logo-section">
+          <div class="logo-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="14" stroke="#10B981" stroke-width="2"/>
+              <circle cx="16" cy="16" r="8" fill="#10B981" opacity="0.3"/>
+              <circle cx="16" cy="16" r="4" fill="#10B981"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <h1>AIRSENSE</h1>
+            <p>Real-time AQI</p>
+          </div>
+        </div>
+        
+        <div class="location-selector">
+          <label class="input-label">LOCATION</label>
+          <div class="search-input-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="cityInput" class="search-input" placeholder="Search city..." autocomplete="off" />
+          </div>
+          <div id="citySuggestions" class="city-suggestions"></div>
+          <button id="locateBtn" class="locate-btn">
+            <i class="fas fa-location-crosshairs"></i>
+            <span>Use My Location</span>
+          </button>
+        </div>
+        <nav class="quick-tabs">
+          <label class="input-label">VIEW</label>
+          <div class="tab-group">
+            <button class="tab-btn active" data-page="dashboard">
+              <i class="fas fa-gauge"></i>
+              <span>Dashboard</span>
+            </button>
+            <button class="tab-btn" data-page="forecast">
+              <i class="fas fa-chart-line"></i>
+              <span>Graphs</span>
+            </button>
+          </div>
+        </nav>
+        <div class="ai-chat-card glass-card">
+          <div class="card-header-compact">
+            <h3 class="card-title-small">AI ASSISTANT</h3>
+            <button id="clearChatBtn" class="clear-chat-btn-small" title="Clear conversation">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          
+          <div class="chat-messages-compact" id="chatMessages">
+            <div class="chat-welcome-compact">
+              <i class="fas fa-robot" style="font-size: 2rem; color: #10B981; margin-bottom: 0.5rem;"></i>
+              <p style="color: var(--color-text-secondary); font-size: 0.75rem; text-align: center;">Ask me about air quality!</p>
+            </div>
+          </div>
+          
+          <div class="chat-input-wrapper-compact">
+            <input type="text" id="chatInput" class="chat-input-compact" placeholder="Ask about air quality..." />
+            <button id="sendMessageBtn" class="send-message-btn-compact">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+      <main class="center-column">
+        <section id="dashboardView" class="view-section active">
+          <div class="hero-gauge-card glass-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">AIR QUALITY INDEX</h2>
+                <p class="card-subtitle" id="locationName">Loading location...</p>
+              </div>
+              <div class="live-indicator">
+                <span class="pulse-dot"></span>
+                <span>LIVE</span>
+              </div>
+            </div>
+            
+            <div class="gauge-container">
+              <svg class="radial-gauge" viewBox="0 0 200 200">
+                <defs>
+                  <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" class="gauge-gradient-start" />
+                    <stop offset="100%" class="gauge-gradient-end" />
+                  </linearGradient>
+                  <filter id="gaugeShadow">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                    <feOffset dx="0" dy="2" result="offsetblur"/>
+                    <feComponentTransfer>
+                      <feFuncA type="linear" slope="0.5"/>
+                    </feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <circle cx="100" cy="100" r="85" fill="none" stroke="#242C3D" stroke-width="12" />
+                <circle id="gaugeProgress" cx="100" cy="100" r="85" fill="none" stroke="url(#gaugeGradient)" stroke-width="12" stroke-linecap="round" stroke-dasharray="534.07" stroke-dashoffset="534.07" transform="rotate(-90 100 100)" filter="url(#gaugeShadow)" />
+              </svg>
+              <div class="gauge-center">
+                <div class="aqi-value" id="aqiValue">--</div>
+                <div class="aqi-label">AQI</div>
+                <div class="aqi-status" id="aqiStatus">Awaiting data</div>
+              </div>
+            </div>
+            <div class="gauge-info-bar">
+              <div class="info-item">
+                <i class="fas fa-clock"></i>
+                <span id="lastUpdate">--</span>
+              </div>
+              <div class="info-item">
+                <i class="fas fa-location-dot"></i>
+                <span id="stationName">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="map-card glass-card">
+            <div class="card-header">
+              <h2 class="card-title">LOCATION MAP</h2>
+            </div>
+            <div id="map" class="map-container">
+              <div class="map-loading" id="mapLoading">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--color-good);"></i>
+                <p style="margin-top: 1rem; color: var(--color-text-secondary);">Loading map...</p>
+              </div>
+            </div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card glass-card">
+              <div class="metric-icon temp-icon">
+                <i class="fas fa-temperature-half"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-label">TEMPERATURE</span>
+                <span class="metric-value" id="temperature">--°C</span>
+                <span class="metric-detail" id="weatherDesc">--</span>
+              </div>
+            </div>
+            
+            <div class="metric-card glass-card">
+              <div class="metric-icon humidity-icon">
+                <i class="fas fa-droplet"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-label">HUMIDITY</span>
+                <span class="metric-value" id="humidity">--%</span>
+                <span class="metric-detail">Relative</span>
+              </div>
+            </div>
+            
+            <div class="metric-card glass-card">
+              <div class="metric-icon wind-icon">
+                <i class="fas fa-wind"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-label">WIND SPEED</span>
+                <span class="metric-value" id="windSpeed">-- m/s</span>
+                <span class="metric-detail" id="windDirection">--</span>
+              </div>
+            </div>
+            
+            <div class="metric-card glass-card">
+              <div class="metric-icon pressure-icon">
+                <i class="fas fa-gauge-high"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-label">PRESSURE</span>
+                <span class="metric-value" id="pressure">-- hPa</span>
+                <span class="metric-detail">Sea level</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="forecastView" class="view-section">
+          <div class="timeline-card glass-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">7-DAY HISTORICAL TREND</h2>
+                <p class="card-subtitle">Air quality index over time</p>
+              </div>
+              <div class="chart-controls">
+                <button class="chart-control-btn active" data-range="7d">7D</button>
+                <button class="chart-control-btn" data-range="30d">30D</button>
+                <button class="chart-control-btn" data-range="90d">90D</button>
+              </div>
+            </div>
+            
+            <div class="chart-wrapper">
+              <canvas id="historicalChart"></canvas>
+            </div>
+          </div>
+          <div class="forecast-card glass-card">
+            <div class="card-header">
+              <h2 class="card-title">12-HOUR FORECAST</h2>
+              <p class="card-subtitle">Predicted air quality trends</p>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="forecastChart"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+      <aside class="sidebar-right">
+        <div class="health-advisory-card glass-card">
+          <div class="card-header-compact">
+            <h3 class="card-title-small">HEALTH ADVISORY</h3>
+            <div class="advisory-severity" id="advisorySeverity">
+              <span class="severity-dot"></span>
+              <span id="severityLabel">GOOD</span>
+            </div>
+          </div>
+          
+          <div class="advisory-content" id="advisoryContent">
+            <div class="advisory-message">
+              Air quality is excellent. Perfect for outdoor activities.
+            </div>
+            
+            <div class="advisory-recommendations">
+              <div class="recommendation-item">
+                <i class="fas fa-circle-check"></i>
+                <span>Safe for outdoor exercise</span>
+              </div>
+              <div class="recommendation-item">
+                <i class="fas fa-circle-check"></i>
+                <span>No mask required</span>
+              </div>
+              <div class="recommendation-item">
+                <i class="fas fa-circle-check"></i>
+                <span>Open windows freely</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pollutant-sliders-card glass-card">
+          <div class="card-header-compact">
+            <h3 class="card-title-small">KEY POLLUTANTS</h3>
+          </div>
+          
+          <div class="pollutant-sliders">
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">PM2.5</span>
+                  <span class="pollutant-description">Fine Particles</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="pm25Value">--</span>
+                  <span class="pollutant-unit">µg/m³</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="pm25Fill" style="width: 0%"></div>
+                <div class="slider-thumb" id="pm25Thumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>250+</span>
+              </div>
+            </div>
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">PM10</span>
+                  <span class="pollutant-description">Coarse Particles</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="pm10Value">--</span>
+                  <span class="pollutant-unit">µg/m³</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="pm10Fill" style="width: 0%"></div>
+                <div class="slider-thumb" id="pm10Thumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>350+</span>
+              </div>
+            </div>
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">NO₂</span>
+                  <span class="pollutant-description">Nitrogen Dioxide</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="no2Value">--</span>
+                  <span class="pollutant-unit">ppb</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="no2Fill" style="width: 0%"></div>
+                <div class="slider-thumb" id="no2Thumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>200+</span>
+              </div>
+            </div>
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">O₃</span>
+                  <span class="pollutant-description">Ozone</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="o3Value">--</span>
+                  <span class="pollutant-unit">ppb</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="o3Fill" style="width: 0%"></div>
+                <div class="slider-thumb" id="o3Thumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>200+</span>
+              </div>
+            </div>
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">CO</span>
+                  <span class="pollutant-description">Carbon Monoxide</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="coValue">--</span>
+                  <span class="pollutant-unit">ppm</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="coFill" style="width: 0%"></div>
+                <div class="slider-thumb" id="coThumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>15+</span>
+              </div>
+            </div>
+            <div class="pollutant-slider-item">
+              <div class="pollutant-slider-header">
+                <div class="pollutant-info">
+                  <span class="pollutant-name">SO₂</span>
+                  <span class="pollutant-description">Sulfur Dioxide</span>
+                </div>
+                <div class="pollutant-value-box">
+                  <span class="pollutant-value" id="so2Value">--</span>
+                  <span class="pollutant-unit">ppb</span>
+                </div>
+              </div>
+              <div class="slider-track">
+                <div class="slider-fill" id="so2Fill" style="width: 0%"></div>
+                <div class="slider-thumb" id="so2Thumb" style="left: 0%"></div>
+              </div>
+              <div class="slider-labels">
+                <span>0</span>
+                <span>Good</span>
+                <span>100+</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="alert-settings-card glass-card">
+          <div class="card-header-compact">
+            <h3 class="card-title-small">ALERT SETTINGS</h3>
+          </div>
+          
+          <div class="alert-toggles">
+            <label class="alert-toggle-item">
+              <input type="checkbox" id="alertsToggle" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-label">Enable Alerts</span>
+            </label>
+            
+            <label class="alert-toggle-item">
+              <input type="checkbox" id="pushToggle" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-label">Push Notifications</span>
+            </label>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div id="toastContainer" class="toast-container"></div>
+    <div id="alertBanner" class="alert-banner">
+      <div class="alert-content">
+        <i class="fas fa-triangle-exclamation"></i>
+        <div class="alert-text">
+          <strong id="alertTitle">Health Alert</strong>
+          <span id="alertMessage">Air quality is unhealthy</span>
+        </div>
+        <button id="dismissAlert" class="dismiss-alert-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
