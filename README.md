@@ -63,21 +63,6 @@ const AI_API_KEY = "your-groq-api-key";
 
 For secure deployment, use the included serverless functions in the `api/` folder.
 
-## Browser Support
-
-- Chrome 90+
-- Firefox 88+
-- Edge 90+
-- Safari 14+
-
-## AQI Categories
-
-- 0-50: Good
-- 51-100: Moderate
-- 101-150: Unhealthy for Sensitive Groups
-- 151-200: Unhealthy
-- 201-300: Very Unhealthy
-- 301+: Hazardous
 
 ## Project Structure
 
@@ -93,10 +78,3 @@ airsense-main/
 ## License
 
 This project is provided as-is for educational and personal use.
-
-## Credits
-
-- Air quality data by World Air Quality Index Project
-- Weather data by OpenWeather
-- Map tiles by OpenStreetMap contributors
-- AI powered by Groq
