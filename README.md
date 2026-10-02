@@ -74,7 +74,3 @@ airsense-main/
 ├── script.js         # JavaScript functionality
 └── README.md         # Documentation
 ```
-
-## License
-
-This project is provided as-is for educational and personal use.
